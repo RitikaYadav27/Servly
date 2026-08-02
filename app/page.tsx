@@ -3,28 +3,16 @@
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import GoogleAuth from '../components/google-auth';
-import { motion, useScroll, useSpring } from 'framer-motion';
+import { motion, useScroll, useSpring, type Variants } from 'framer-motion';
 import { ArrowRight, Check, ChevronRight, CirclePlay, Clock3, CreditCard, Menu, Star, MapPin, ShieldCheck, Sparkles, X, Wrench, Zap, Paintbrush, Camera, GraduationCap, HeartHandshake, Users, Bot, Globe2, LockKeyhole, Instagram, Linkedin, Twitter, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 const HeroScene = dynamic(() => import('../components/hero-scene'), { ssr: false });
 
-const easeOut = [0.22, 1, 0.36, 1] as const;
-const easeSoft = [0.16, 1, 0.3, 1] as const;
-
-const reveal = {
-  hidden: { opacity: 0, y: 32 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: easeOut } },
-} as const;
-
-const services: Array<[string, LucideIcon, string]> = [
-  ['Plumbing', Wrench, 'From ₹199'],
-  ['Electrician', Zap, 'From ₹249'],
-  ['Cleaning', Sparkles, 'From ₹399'],
-  ['Painting', Paintbrush, 'From ₹999'],
-  ['Photography', Camera, 'From ₹799'],
-  ['Tutoring', GraduationCap, 'From ₹299'],
-  ['Beauty at home', HeartHandshake, 'From ₹499'],
-  ['15+ more', ChevronRight, 'Explore all'],
+const revealEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const heroEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const reveal: Variants = { hidden: { opacity: 0, y: 32 }, show: { opacity: 1, y: 0, transition: { duration: .7, ease: revealEase } } };
+const services: Array<[name: string, Icon: LucideIcon, sub: string]> = [
+  ['Plumbing', Wrench, 'From ₹199'], ['Electrician', Zap, 'From ₹249'], ['Cleaning', Sparkles, 'From ₹399'], ['Painting', Paintbrush, 'From ₹999'], ['Photography', Camera, 'From ₹799'], ['Tutoring', GraduationCap, 'From ₹299'], ['Beauty at home', HeartHandshake, 'From ₹499'], ['15+ more', ChevronRight, 'Explore all'],
 ];
 const stats = [['100K+', 'verified professionals'], ['1M+', 'services completed'], ['500+', 'cities in reach'], ['4.9★', 'customer love score']];
 const categories = ['Plumbing','Electrician','Carpentry','Home Cleaning','Painting','Beauty','Makeup Artist','Mehndi Artist','Photography','Tutors','Packers & Movers','Car Wash','Pest Control','Laundry','Gardening','Pet Care','Event Décor','AC Repair','Appliance Repair'];
@@ -48,7 +36,7 @@ export default function Home() {
         <motion.div variants={reveal} className="hero-actions"><Button>Book a service</Button><button className="watch"><span><CirclePlay size={18}/></span> Watch the film</button></motion.div>
         <motion.div variants={reveal} className="rating"><div className="avatar-stack"><b>R</b><b>M</b><b>A</b></div><div><strong><Star size={13} fill="currentColor"/> 4.9 from 50,000+ neighbours</strong><small>Built for the way India lives</small></div></motion.div>
       </motion.div>
-      <motion.div initial={{opacity:0, scale:.88, rotate:8}} animate={{opacity:1, scale:1, rotate:0}} transition={{duration:1.1, ease:easeSoft}} className="hero-visual"><HeroScene/>
+      <motion.div initial={{opacity:0, scale:.88, rotate:8}} animate={{opacity:1, scale:1, rotate:0}} transition={{duration:1.1, ease:heroEase}} className="hero-visual"><HeroScene/>
         <div className="float-tag tag-top"><MapPin size={15}/><span>Nearby now</span><b>12 min</b></div><div className="float-tag tag-bottom"><span className="verified"><Check size={12}/></span><span>Verified professionals</span></div>
         <div className="phone-shadow"/><div className="phone"><div className="phone-top"><small>9:41</small><i/><small>•••</small></div><div className="phone-screen"><div className="app-head"><span>Good morning, Ananya</span><b><MapPin size={13}/> Indiranagar</b></div><h3>What do you need<br/>help with?</h3><div className="search">⌕&nbsp; Search services</div><div className="mini-title">Recommended for you <ChevronRight size={15}/></div><div className="mini-cards"><div><span className="mini-icon orange">⌁</span><b>Home<br/>cleaning</b><small>From ₹399</small></div><div><span className="mini-icon blue">ϟ</span><b>Electrical<br/>repair</b><small>From ₹249</small></div></div><div className="home-bar"><i/><span>Home</span><span>Bookings</span><span>Profile</span></div></div></div>
         <div className="spark spark-a"/><div className="spark spark-b"/><div className="spark spark-c"/>
@@ -63,10 +51,7 @@ export default function Home() {
 
     <section className="solution section-pad"><div className="solution-photo"><Image fill sizes="(max-width: 800px) 100vw, 50vw" src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=85" alt="Professional cleaning a home"/><div className="image-label"><span><ShieldCheck/></span><div><b>Protected every step</b><small>Only trusted professionals, ever.</small></div></div></div><div className="solution-copy"><p className="eyebrow"><span/> the servly difference</p><h2>Made for real life.<br/><em>Powered by trust.</em></h2><p>SERVLY brings India’s fragmented service economy into one thoughtful, intelligent platform — making each interaction simpler for customers and more rewarding for professionals.</p><div className="feature-list">{['Hyperlocal discovery','Transparent, upfront booking','Professional empowerment','Secure escrow payments','Live GPS tracking','KYC verification'].map(x=><div key={x}><i><Check size={13}/></i>{x}</div>)}</div><Button>Discover SERVLY</Button></div></section>
 
-    <section id="services" className="services section-pad"><div className="section-head centered"><p className="eyebrow"><span/> made for every moment</p><h2>Whatever life<br/>throws your <em>way.</em></h2></div><div className="service-grid">{services.map(([name, Icon, sub], i) => {
-        const ServiceIcon = Icon;
-        return <motion.div whileHover={{ y: -8 }} key={name} className={'service-card service-' + i}><span><ServiceIcon size={24} /></span><h3>{name}</h3><p>{sub}</p><ArrowRight size={17} /></motion.div>;
-      })}</div><button className="link-button">Explore 35+ service categories <ArrowRight size={17}/></button></section>
+    <section id="services" className="services section-pad"><div className="section-head centered"><p className="eyebrow"><span/> made for every moment</p><h2>Whatever life<br/>throws your <em>way.</em></h2></div><div className="service-grid">{services.map(([name,Icon,sub],i)=><motion.div whileHover={{y:-8}} key={name} className={'service-card service-'+i}><span><Icon size={24}/></span><h3>{name}</h3><p>{sub}</p><ArrowRight size={17}/></motion.div>)}</div><button className="link-button">Explore 35+ service categories <ArrowRight size={17}/></button></section>
 
     <section className="vision section-pad"><article><p className="eyebrow"><span/> our north star</p><h2>India’s most<br/><em>trusted</em> local<br/>services platform.</h2><div className="line-arrow">↗</div></article><article><p className="eyebrow"><span/> why we exist</p><h2>To digitize local service — and put millions of independent professionals <em>on the map.</em></h2><div className="circle-word">SERVLY<br/>SERVLY</div></article></section>
 
