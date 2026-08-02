@@ -2,10 +2,6 @@ import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
-}
-
 interface MongooseCache {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
@@ -22,13 +18,16 @@ if (!global.mongooseCache) {
 }
 
 export async function connectToDatabase() {
+  if (!MONGODB_URI) {
+    throw new Error('Missing MONGODB_URI environment variable');
+  }
+
   if (cached.conn) {
     return cached.conn;
   }
 
   if (!cached.promise) {
-    // Ensure DB name is in the URI
-    let uri = MONGODB_URI!;
+    let uri = MONGODB_URI;
     if (uri.includes('.mongodb.net/') && uri.includes('.mongodb.net/?')) {
       uri = uri.replace('.mongodb.net/?', '.mongodb.net/servly?');
     } else if (uri.includes('.mongodb.net/') && !uri.includes('.mongodb.net/servly')) {
@@ -41,7 +40,7 @@ export async function connectToDatabase() {
       bufferCommands: false,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
-      family: 4, // Force IPv4 — fixes most SRV/DNS resolution issues on Windows
+      family: 4,
     };
 
     cached.promise = mongoose.connect(uri, opts).then((m) => {
