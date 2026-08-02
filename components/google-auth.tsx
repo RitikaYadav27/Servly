@@ -40,8 +40,10 @@ export default function GoogleAuth() {
   if (!user) return <><FirebaseScripts/><button className="google-signin" onClick={login} disabled={busy}>{busy ? <LoaderCircle className="spin" size={16}/> : <GoogleMark/>}{busy ? 'Opening Google…' : 'Continue with Google'}</button></>;
 
   return <><FirebaseScripts/><div className="user-menu" title={user.email ?? undefined}>
-    {user.photoURL ? <Image src={user.photoURL} alt="" width={32} height={32} className="user-avatar" unoptimized/> : <span className="avatar-fallback">{user.displayName?.charAt(0) ?? 'S'}</span>}
-    <span className="user-name">{user.displayName?.split(' ')[0] ?? 'Servly member'}</span>
+    <a href="/profile" className="user-profile-link" title="View Profile">
+      {user.photoURL ? <Image src={user.photoURL} alt="" width={32} height={32} className="user-avatar" unoptimized/> : <span className="avatar-fallback">{user.displayName?.charAt(0) ?? 'S'}</span>}
+      <span className="user-name">{user.displayName?.split(' ')[0] ?? 'Servly member'}</span>
+    </a>
     <button onClick={() => window.firebase.auth().signOut()} aria-label="Sign out" className="signout"><LogOut size={14}/></button>
   </div></>;
 }

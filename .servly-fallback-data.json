@@ -1,0 +1,55 @@
+{
+  "users": {
+    "test@example.com": {
+      "email": "test@example.com",
+      "displayName": "test",
+      "phone": "+919999999999",
+      "city": "Bengaluru",
+      "bio": "Test",
+      "isProvider": true,
+      "completedOrders": 0,
+      "rating": 5,
+      "safetyScore": "100%"
+    },
+    "yadaraj52@gmail.com": {
+      "email": "yadaraj52@gmail.com",
+      "displayName": "yadaraj52",
+      "phone": "+91 9598308886",
+      "city": "Indiranagar, Bengaluru",
+      "bio": "Just testing",
+      "isProvider": true,
+      "completedOrders": 0,
+      "rating": 5,
+      "safetyScore": "100%"
+    }
+  },
+  "providers": {
+    "test@example.com": {
+      "userEmail": "test@example.com",
+      "category": "Plumbing",
+      "experience": "2-5 years",
+      "hourlyRate": "499",
+      "bio": "Test",
+      "phone": "+919999999999",
+      "city": "Bengaluru",
+      "servicesOffered": [
+        "A"
+      ],
+      "status": "active"
+    },
+    "yadaraj52@gmail.com": {
+      "userEmail": "yadaraj52@gmail.com",
+      "category": "Plumbing",
+      "experience": "2-5 years",
+      "hourlyRate": "499",
+      "bio": "Just testing",
+      "phone": "+91 9598308886",
+      "city": "Indiranagar, Bengaluru",
+      "servicesOffered": [
+        "General Inspection & Repair",
+        "Emergency Fixes"
+      ],
+      "status": "active"
+    }
+  }
+}
