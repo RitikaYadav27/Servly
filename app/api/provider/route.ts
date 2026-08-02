@@ -9,6 +9,10 @@ import {
   saveFallbackUser,
 } from '../../../lib/fallback-store';
 
+function normalizeEmail(email?: string | null) {
+  return (email || '').trim().toLowerCase();
+}
+
 async function buildUserRecord(email: string, body: any) {
   return {
     email,
@@ -28,8 +32,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { email, category, experience, hourlyRate, bio, phone, city, servicesOffered } = body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!email || !category || !phone || !hourlyRate) {
+    if (!normalizedEmail || !category || !phone || !hourlyRate) {
       return NextResponse.json({ error: 'Missing required provider fields' }, { status: 400 });
     }
 
@@ -39,11 +44,13 @@ export async function POST(req: NextRequest) {
     try {
       await connectToDatabase();
 
+      const displayName = body.displayName || normalizedEmail.split('@')[0] || 'Servly Member';
+
       provider = await Provider.findOneAndUpdate(
-        { userEmail: email },
+        { userEmail: normalizedEmail },
         {
           $set: {
-            userEmail: email,
+            userEmail: normalizedEmail,
             category,
             experience,
             hourlyRate,
@@ -58,20 +65,20 @@ export async function POST(req: NextRequest) {
       );
 
       user = await User.findOneAndUpdate(
-        { email },
-        { $set: { isProvider: true, city, phone } },
+        { email: normalizedEmail },
+        { $set: { email: normalizedEmail, displayName, isProvider: true, city, phone } },
         { new: true, upsert: true }
       );
     } catch (dbError: any) {
       console.error('MongoDB provider submission failed, using fallback store:', dbError);
 
-      const fallbackUser = await getFallbackUser(email);
-      const fallbackProvider = await getFallbackProvider(email);
+      const fallbackUser = await getFallbackUser(normalizedEmail);
+      const fallbackProvider = await getFallbackProvider(normalizedEmail);
 
       const nextUser = await saveFallbackUser({
-        ...(fallbackUser || (await buildUserRecord(email, body))),
-        email,
-        displayName: fallbackUser?.displayName || body.displayName || email.split('@')[0] || 'Servly Member',
+        ...(fallbackUser || (await buildUserRecord(normalizedEmail, body))),
+        email: normalizedEmail,
+        displayName: fallbackUser?.displayName || body.displayName || normalizedEmail.split('@')[0] || 'Servly Member',
         phone: phone || fallbackUser?.phone || '',
         city: city || fallbackUser?.city || 'Indiranagar, Bengaluru',
         bio: bio || fallbackUser?.bio || '',
@@ -83,7 +90,7 @@ export async function POST(req: NextRequest) {
 
       const nextProvider = await saveFallbackProvider({
         ...(fallbackProvider || {
-          userEmail: email,
+          userEmail: normalizedEmail,
           category,
           experience,
           hourlyRate,
@@ -93,7 +100,7 @@ export async function POST(req: NextRequest) {
           servicesOffered: servicesOffered && servicesOffered.length ? servicesOffered : [category + ' General Repair', 'Emergency Service'],
           status: 'active',
         }),
-        userEmail: email,
+        userEmail: normalizedEmail,
         category,
         experience,
         hourlyRate,
@@ -120,21 +127,22 @@ export async function PATCH(req: NextRequest) {
     await connectToDatabase();
     const body = await req.json();
     const { email, isProvider } = body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!email) {
+    if (!normalizedEmail) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
     const user = await User.findOneAndUpdate(
-      { email },
-      { $set: { isProvider } },
+      { email: normalizedEmail },
+      { $set: { email: normalizedEmail, isProvider } },
       { new: true }
     );
 
     if (isProvider) {
-      await Provider.findOneAndUpdate({ userEmail: email }, { $set: { status: 'active' } });
+      await Provider.findOneAndUpdate({ userEmail: normalizedEmail }, { $set: { status: 'active' } });
     } else {
-      await Provider.findOneAndUpdate({ userEmail: email }, { $set: { status: 'paused' } });
+      await Provider.findOneAndUpdate({ userEmail: normalizedEmail }, { $set: { status: 'paused' } });
     }
 
     return NextResponse.json({ user }, { status: 200 });

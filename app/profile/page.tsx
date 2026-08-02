@@ -107,8 +107,10 @@ export default function ProfilePage() {
   }, []);
 
   const fetchMongoData = async (email: string, displayName: string, photoURL: string | null) => {
+    const normalizedEmail = email.trim().toLowerCase();
+
     try {
-      const res = await fetch(`/api/profile?email=${encodeURIComponent(email)}`);
+      const res = await fetch(`/api/profile?email=${encodeURIComponent(normalizedEmail)}`);
       const data = await res.json();
       if (data.user) {
         setDbUser(data.user);
@@ -131,7 +133,7 @@ export default function ProfilePage() {
       await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, displayName, photoURL })
+        body: JSON.stringify({ email: normalizedEmail, displayName, photoURL })
       });
     } catch (err) {
       console.error('Failed fetching MongoDB profile:', err);
@@ -143,7 +145,7 @@ export default function ProfilePage() {
   const handleBecomeProviderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmittingProvider(true);
-    const email = firebaseUser?.email || dbUser?.email || 'demo@servly.in';
+    const email = (firebaseUser?.email || dbUser?.email || 'demo@servly.in').trim().toLowerCase();
 
     try {
       const res = await fetch('/api/provider', {
@@ -204,7 +206,7 @@ export default function ProfilePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: dbUser.email,
+          email: dbUser.email.trim().toLowerCase(),
           city: cityInput,
           bio: bioInput
         })

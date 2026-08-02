@@ -13,11 +13,24 @@
     },
     "yadaraj52@gmail.com": {
       "email": "yadaraj52@gmail.com",
-      "displayName": "yadaraj52",
+      "displayName": "Raj Shekhar Yadav",
       "phone": "+91 9598308886",
       "city": "Indiranagar, Bengaluru",
       "bio": "just testing",
       "isProvider": true,
+      "completedOrders": 0,
+      "rating": 5,
+      "safetyScore": "100%",
+      "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocIK5Tw7yN4SBGOa1ZYiJog_6lkh3T8aZ13M2edIUij2u9v8uwE_cw=s96-c"
+    },
+    "yadaraj53@gmail.com": {
+      "email": "yadaraj53@gmail.com",
+      "displayName": "Raj Shekhar Yadav",
+      "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocJcVQiv-3fVM_V2-Gjo7_4jJrRouCynRxsmBN4tlvSYGyJa78IO=s96-c",
+      "phone": "",
+      "city": "Indiranagar, Bengaluru",
+      "bio": "",
+      "isProvider": false,
       "completedOrders": 0,
       "rating": 5,
       "safetyScore": "100%"
