@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Local env files
+.env
+.env.*
+!.env.example
+!.env.local.example
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Common Windows debris
+*~
+*.tmp

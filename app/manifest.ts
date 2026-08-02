@@ -1,0 +1,1 @@
+import type { MetadataRoute } from 'next'; export default function manifest(): MetadataRoute.Manifest { return { name:'SERVLY', short_name:'SERVLY', description:'Every local service. One app.', start_url:'/', display:'standalone', background_color:'#ffffff', theme_color:'#ff6b00' }; }
