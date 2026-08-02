@@ -8,7 +8,13 @@ import { ArrowRight, Check, ChevronRight, CirclePlay, Clock3, CreditCard, Menu, 
 import { useState } from 'react';
 const HeroScene = dynamic(() => import('../components/hero-scene'), { ssr: false });
 
-const reveal = { hidden: { opacity: 0, y: 32 }, show: { opacity: 1, y: 0, transition: { duration: .7, ease: [0.22, 1, 0.36, 1] } } };
+const easeOut = [0.22, 1, 0.36, 1] as const;
+const easeSoft = [0.16, 1, 0.3, 1] as const;
+
+const reveal = {
+  hidden: { opacity: 0, y: 32 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: easeOut } },
+} as const;
 const services = [
   ['Plumbing', Wrench, 'From ₹199'], ['Electrician', Zap, 'From ₹249'], ['Cleaning', Sparkles, 'From ₹399'], ['Painting', Paintbrush, 'From ₹999'], ['Photography', Camera, 'From ₹799'], ['Tutoring', GraduationCap, 'From ₹299'], ['Beauty at home', HeartHandshake, 'From ₹499'], ['15+ more', ChevronRight, 'Explore all'],
 ];
@@ -34,7 +40,7 @@ export default function Home() {
         <motion.div variants={reveal} className="hero-actions"><Button>Book a service</Button><button className="watch"><span><CirclePlay size={18}/></span> Watch the film</button></motion.div>
         <motion.div variants={reveal} className="rating"><div className="avatar-stack"><b>R</b><b>M</b><b>A</b></div><div><strong><Star size={13} fill="currentColor"/> 4.9 from 50,000+ neighbours</strong><small>Built for the way India lives</small></div></motion.div>
       </motion.div>
-      <motion.div initial={{opacity:0, scale:.88, rotate:8}} animate={{opacity:1, scale:1, rotate:0}} transition={{duration:1.1, ease:[.16,1,.3,1]}} className="hero-visual"><HeroScene/>
+      <motion.div initial={{opacity:0, scale:.88, rotate:8}} animate={{opacity:1, scale:1, rotate:0}} transition={{duration:1.1, ease:easeSoft}} className="hero-visual"><HeroScene/>
         <div className="float-tag tag-top"><MapPin size={15}/><span>Nearby now</span><b>12 min</b></div><div className="float-tag tag-bottom"><span className="verified"><Check size={12}/></span><span>Verified professionals</span></div>
         <div className="phone-shadow"/><div className="phone"><div className="phone-top"><small>9:41</small><i/><small>•••</small></div><div className="phone-screen"><div className="app-head"><span>Good morning, Ananya</span><b><MapPin size={13}/> Indiranagar</b></div><h3>What do you need<br/>help with?</h3><div className="search">⌕&nbsp; Search services</div><div className="mini-title">Recommended for you <ChevronRight size={15}/></div><div className="mini-cards"><div><span className="mini-icon orange">⌁</span><b>Home<br/>cleaning</b><small>From ₹399</small></div><div><span className="mini-icon blue">ϟ</span><b>Electrical<br/>repair</b><small>From ₹249</small></div></div><div className="home-bar"><i/><span>Home</span><span>Bookings</span><span>Profile</span></div></div></div>
         <div className="spark spark-a"/><div className="spark spark-b"/><div className="spark spark-c"/>
