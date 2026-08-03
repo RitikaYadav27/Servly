@@ -91,6 +91,8 @@ export default function Home() {
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentSlot, setAppointmentSlot] = useState('10:00 AM');
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
   const [reviews, setReviews] = useState<StoredReview[]>([]);
   const [providerPhotos, setProviderPhotos] = useState<ProviderPhotoMap>({});
   const [reviewText, setReviewText] = useState('');
@@ -253,6 +255,7 @@ export default function Home() {
 
   const confirmAppointment = async () => {
     if (!selectedProvider || !appointmentDate) return;
+    setBookingLoading(true);
     const providerImage = providerPhotos[selectedProvider.userEmail]?.[0] || selectedProvider.photoURL;
     const bookingId = `${Date.now()}-${selectedProvider.userEmail}`;
     const booking: StoredBooking = {
@@ -273,9 +276,12 @@ export default function Home() {
     try {
       await persistBooking(booking);
       setBookingConfirmed(true);
+      setShowConfirmPopup(true);
     } catch (error) {
       console.error('Failed saving booking to MongoDB', error);
       alert('Unable to save booking right now. Please try again.');
+    } finally {
+      setBookingLoading(false);
     }
   };
 
@@ -484,18 +490,19 @@ export default function Home() {
                     {provider.servicesOffered.slice(0, 3).map((service) => <span key={service}>{service}</span>)}
                   </div>
                   <button
-                    className="button button-dark full"
+                    className="book-btn"
                     onClick={() => {
                       setSelectedProvider(provider);
                       setAppointmentDate('');
                       setAppointmentSlot('10:00 AM');
                       setBookingConfirmed(false);
+                      setShowConfirmPopup(false);
                       setReviewText('');
                       setReviewImage('');
                       setServicePhotoMessage('');
                     }}
                   >
-                    Book appointment <ArrowRight size={14} />
+                    <CalendarDays size={15} /> Book appointment
                   </button>
                 </div>
               </motion.article>
@@ -607,13 +614,38 @@ export default function Home() {
                     </select>
                   </label>
                 </div>
-                <button className="button button-dark full" onClick={confirmAppointment} disabled={!appointmentDate}>
-                  Confirm appointment <CalendarDays size={14} />
+                <button className="confirm-btn" onClick={confirmAppointment} disabled={!appointmentDate || bookingLoading}>
+                  {bookingLoading ? <><LoaderCircle size={15} className="spin" /> Confirming…</> : <><CalendarDays size={15} /> Confirm appointment</>}
                 </button>
-                {bookingConfirmed && (
-                  <p className="booking-success">Appointment requested with {selectedProvider.displayName} for {appointmentDate} at {appointmentSlot}.</p>
-                )}
               </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Booking Confirmation Popup */}
+      {showConfirmPopup && selectedProvider && (
+        <div className="confirm-popup-backdrop" onClick={() => setShowConfirmPopup(false)}>
+          <motion.div
+            initial={{ opacity: 0, scale: .88, y: 32 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: .92, y: 16 }}
+            transition={{ duration: .35, ease: [0.22, 1, 0.36, 1] }}
+            className="confirm-popup"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="confirm-popup-icon"><Check size={28} /></div>
+            <h3>Appointment Confirmed!</h3>
+            <p>Your booking with <strong>{selectedProvider.displayName}</strong> has been requested.</p>
+            <div className="confirm-popup-details">
+              <div><CalendarDays size={14} /><span>{appointmentDate}</span></div>
+              <div><Clock3 size={14} /><span>{appointmentSlot}</span></div>
+              <div><MapPin size={14} /><span>{selectedProvider.city}</span></div>
+            </div>
+            <p className="confirm-popup-note">You'll receive a confirmation once the provider accepts. Check your bookings in your profile.</p>
+            <div className="confirm-popup-actions">
+              <Link href="/profile" className="confirm-popup-btn primary">View my bookings</Link>
+              <button className="confirm-popup-btn secondary" onClick={() => { setShowConfirmPopup(false); setSelectedProvider(null); }}>Done</button>
             </div>
           </motion.div>
         </div>

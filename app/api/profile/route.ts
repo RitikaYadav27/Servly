@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 
     // If a provider doc exists but user flag is out of sync, fix it
     if (provider && !user.isProvider) {
-      await User.findOneAndUpdate({ email: normalizedEmail }, { $set: { isProvider: true } });
+      await User.findOneAndUpdate({ email: normalizedEmail }, { $set: { isProvider: true } }, { returnDocument: 'after' });
       user = { ...user, isProvider: true };
     }
 
@@ -59,26 +59,26 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
+    const setFields: Record<string, any> = { email: normalizedEmail };
+    if (displayName) setFields.displayName = displayName;
+    if (city) setFields.city = city;
+    if (bio !== undefined) setFields.bio = bio;
+    if (phone) setFields.phone = phone;
+    if (photoURL) setFields.photoURL = photoURL;
+
+    // $setOnInsert must not overlap with $set keys
+    const setOnInsertFields: Record<string, any> = {
+      isProvider: false,
+      completedOrders: 0,
+      rating: 5.0,
+      safetyScore: '100%',
+    };
+    if (!displayName) setOnInsertFields.displayName = normalizedEmail.split('@')[0] || 'Servly Member';
+
     const updatedUser = await User.findOneAndUpdate(
       { email: normalizedEmail },
-      {
-        $set: {
-          email: normalizedEmail,
-          ...(displayName && { displayName }),
-          ...(city && { city }),
-          ...(bio !== undefined && { bio }),
-          ...(phone && { phone }),
-          ...(photoURL && { photoURL }),
-        },
-        $setOnInsert: {
-          displayName: displayName || normalizedEmail.split('@')[0] || 'Servly Member',
-          isProvider: false,
-          completedOrders: 0,
-          rating: 5.0,
-          safetyScore: '100%',
-        },
-      },
-      { new: true, upsert: true }
+      { $set: setFields, $setOnInsert: setOnInsertFields },
+      { returnDocument: 'after', upsert: true }
     ).lean();
 
     return NextResponse.json({ user: updatedUser }, { status: 200 });

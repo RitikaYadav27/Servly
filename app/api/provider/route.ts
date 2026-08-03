@@ -36,17 +36,17 @@ export async function POST(req: NextRequest) {
           status: 'active',
         },
       },
-      { new: true, upsert: true }
+      { returnDocument: 'after', upsert: true }
     ).lean();
+
+    const userSetFields: Record<string, any> = { isProvider: true };
+    if (city) userSetFields.city = city;
+    if (phone) userSetFields.phone = phone;
 
     const user = await User.findOneAndUpdate(
       { email: normalizedEmail },
       {
-        $set: {
-          isProvider: true,
-          ...(city && { city }),
-          ...(phone && { phone }),
-        },
+        $set: userSetFields,
         $setOnInsert: {
           email: normalizedEmail,
           displayName: body.displayName || normalizedEmail.split('@')[0] || 'Servly Member',
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
           safetyScore: '100%',
         },
       },
-      { new: true, upsert: true }
+      { returnDocument: 'after', upsert: true }
     ).lean();
 
     return NextResponse.json({ provider, user }, { status: 200 });
@@ -80,7 +80,7 @@ export async function PATCH(req: NextRequest) {
     const user = await User.findOneAndUpdate(
       { email: normalizedEmail },
       { $set: { isProvider } },
-      { new: true }
+      { returnDocument: 'after' }
     ).lean();
 
     await Provider.findOneAndUpdate(
