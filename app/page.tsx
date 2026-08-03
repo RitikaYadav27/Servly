@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import GoogleAuth from '../components/google-auth';
 import { motion, useScroll, useSpring, type Variants } from 'framer-motion';
-import { ArrowRight, BadgeCheck, Bell, CalendarDays, Check, ChevronRight, CirclePlay, Clock3, CreditCard, Flame, ImagePlus, Images, LoaderCircle, Menu, Navigation, Search, Send, SlidersHorizontal, Star, MapPin, ShieldCheck, Sparkles, X, Wrench, Zap, Paintbrush, Camera, GraduationCap, HeartHandshake, Users, Bot, Instagram, Linkedin, Twitter, type LucideIcon } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Bell, CalendarDays, Check, ChevronLeft, ChevronRight, CirclePlay, Clock3, CreditCard, Flame, ImagePlus, Images, LoaderCircle, Menu, Navigation, Search, Send, SlidersHorizontal, Star, MapPin, ShieldCheck, Sparkles, X, Wrench, Zap, Paintbrush, Camera, GraduationCap, HeartHandshake, Users, Bot, Instagram, Linkedin, Twitter, type LucideIcon } from 'lucide-react';
 
 const HeroScene = dynamic(() => import('../components/hero-scene'), { ssr: false });
 
@@ -103,6 +103,8 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [location, setLocation] = useState('Indiranagar, Bengaluru');
   const [loadingProviders, setLoadingProviders] = useState(true);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const slideTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const { scrollYProgress } = useScroll(); const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
 
   useEffect(() => {
@@ -294,53 +296,423 @@ export default function Home() {
     });
   }, [activeCategory, providers, search]);
 
+  const triggerGoogleAuth = async () => {
+    if (!window.firebase) {
+      alert('Google Auth is initializing. Please try again in a moment.');
+      return;
+    }
+    try {
+      if (!window.firebase.apps.length) {
+        window.firebase.initializeApp(firebaseConfig);
+      }
+      await window.firebase.auth().signInWithPopup(new window.firebase.auth.GoogleAuthProvider());
+    } catch (error) {
+      console.error('Google sign-in failed', error);
+    }
+  };
+
   if (!user) {
-    return <main>
-      <motion.div className="progress" style={{ scaleX }} />
-      <nav className="nav"><a className="logo" href="#top">serv<span>ly</span><i /></a><div className={'navlinks ' + (menu ? 'active' : '')}><a href="#services">Services</a><a href="#ecosystem">For professionals</a><a href="#story">Our story</a><a href="#contact">Contact</a><GoogleAuth/></div><button className="menubtn" onClick={() => setMenu(!menu)} aria-label="menu">{menu ? <X/>:<Menu/>}</button></nav>
+    return (
+      <main className="landing-root">
+        <motion.div className="progress" style={{ scaleX }} />
 
-      <section id="top" className="hero">
-        <div className="mesh orb-one"/><div className="mesh orb-two"/><div className="grid-fade"/>
-        <motion.div initial="hidden" animate="show" variants={{show:{transition:{staggerChildren:.11}}}} className="hero-copy">
-          <motion.div variants={reveal} className="eyebrow"><span/> India’s trusted local network</motion.div>
-          <motion.h1 variants={reveal}>Every local<br/>service. <em>One app.</em></motion.h1>
-          <motion.p variants={reveal}>A calmer way to get things done. SERVLY connects households with verified local professionals through instant booking, transparent pricing, and quality you can count on.</motion.p>
-          <motion.div variants={reveal} className="hero-actions"><Button>Book a service</Button><button className="watch"><span><CirclePlay size={18}/></span> Watch the film</button></motion.div>
-          <motion.div variants={reveal} className="rating"><div className="avatar-stack"><b>R</b><b>M</b><b>A</b></div><div><strong><Star size={13} fill="currentColor"/> 4.9 from 50,000+ neighbours</strong><small>Built for the way India lives</small></div></motion.div>
-        </motion.div>
-        <motion.div initial={{opacity:0, scale:.88, rotate:8}} animate={{opacity:1, scale:1, rotate:0}} transition={{duration:1.1, ease:heroEase}} className="hero-visual"><HeroScene/>
-          <div className="float-tag tag-top"><MapPin size={15}/><span>Nearby now</span><b>12 min</b></div><div className="float-tag tag-bottom"><span className="verified"><Check size={12}/></span><span>Verified professionals</span></div>
-          <div className="phone-shadow"/><div className="phone"><div className="phone-top"><small>9:41</small><i/><small>•••</small></div><div className="phone-screen"><div className="app-head"><span>Good morning, Ananya</span><b><MapPin size={13}/> Indiranagar</b></div><h3>What do you need<br/>help with?</h3><div className="search">⌕&nbsp; Search services</div><div className="mini-title">Recommended for you <ChevronRight size={15}/></div><div className="mini-cards"><div><span className="mini-icon orange">⌁</span><b>Home<br/>cleaning</b><small>From ₹399</small></div><div><span className="mini-icon blue">ϟ</span><b>Electrical<br/>repair</b><small>From ₹249</small></div></div><div className="home-bar"><i/><span>Home</span><span>Bookings</span><span>Profile</span></div></div></div>
-          <div className="spark spark-a"/><div className="spark spark-b"/><div className="spark spark-c"/>
-        </motion.div>
-      </section>
+        {/* Top Navbar */}
+        <nav className="nav">
+          <a className="logo" href="#top">
+            serv<span>ly</span><i />
+          </a>
+          <div className={`navlinks ${menu ? 'active' : ''}`}>
+            <a href="#services">Services</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#story">Our Story</a>
+            <div className="nav-auth-wrapper">
+              <GoogleAuth />
+            </div>
+          </div>
+          <button className="menubtn" onClick={() => setMenu(!menu)} aria-label="Toggle navigation menu">
+            {menu ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </nav>
 
-      <section className="trusted"><p>THE NEW STANDARD FOR EVERYDAY HELP</p><div className="trust-row">{['KYC verified', 'Instant booking', 'Transparent pricing', 'Smart matching'].map((x,i)=><div key={x}><span>{[<ShieldCheck/>,<Clock3/>,<CreditCard/>,<Bot/>][i]}</span>{x}</div>)}</div></section>
+        {/* Minimal Hero Section */}
+        <section id="top" className="hero hero-minimal">
+          <div className="mesh orb-one" />
+          <div className="mesh orb-two" />
+          <div className="grid-fade" />
 
-      <section className="numbers"><p className="eyebrow"><span/> built close to home</p><h2>Local service,<br/><em>on a larger scale.</em></h2><div className="stat-grid">{stats.map(([n,t])=><motion.div whileHover={{y:-6}} key={t}><strong>{n}</strong><span>{t}</span></motion.div>)}</div></section>
+          <motion.div
+            initial="hidden"
+            animate="show"
+            variants={{ show: { transition: { staggerChildren: 0.1 } } }}
+            className="hero-copy hero-copy-minimal"
+          >
+            <motion.div variants={reveal} className="eyebrow">
+              <span /> Hyperlocal Services Network
+            </motion.div>
 
-      <section id="story" className="problem section-pad"><div className="section-head"><p className="eyebrow"><span/> a better answer</p><h2>Because the old way<br/>wasn’t built for <em>today.</em></h2><p>Finding quality help shouldn’t feel like a leap of faith. We’re rebuilding the local-services experience from the ground up.</p></div><div className="problem-grid">{[['Unreliable discovery','A recommendation from a neighbour is helpful. A verified network is better.'],['Opaque pricing','Know what you’ll pay, before you book — with no awkward surprises.'],['No quality control','Every professional is KYC-checked, rated and held to a clear standard.'],['Provider struggles','Independent professionals get the tools, dignity and demand to grow.']].map((x,i)=><motion.article whileHover={{y:-10, rotateX:3}} key={x[0]}><span>0{i+1}</span><h3>{x[0]}</h3><p>{x[1]}</p><ArrowRight size={20}/></motion.article>)}</div></section>
+            <motion.h1 variants={reveal} className="hero-heading-minimal">
+              Every local service.<br />
+              <em>One intelligent app.</em>
+            </motion.h1>
 
-      <section className="solution section-pad"><div className="solution-photo"><Image fill sizes="(max-width: 800px) 100vw, 50vw" src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=85" alt="Professional cleaning a home"/><div className="image-label"><span><ShieldCheck/></span><div><b>Protected every step</b><small>Only trusted professionals, ever.</small></div></div></div><div className="solution-copy"><p className="eyebrow"><span/> the servly difference</p><h2>Made for real life.<br/><em>Powered by trust.</em></h2><p>SERVLY brings India’s fragmented service economy into one thoughtful, intelligent platform — making each interaction simpler for customers and more rewarding for professionals.</p><div className="feature-list">{['Hyperlocal discovery','Transparent, upfront booking','Professional empowerment','Secure escrow payments','Live GPS tracking','KYC verification'].map(x=><div key={x}><i><Check size={13}/></i>{x}</div>)}</div><Button>Discover SERVLY</Button></div></section>
+            <motion.p variants={reveal} className="hero-sub-minimal">
+              Book verified experts for home cleaning, plumbing, electrical, and painting. Sign in with Google to explore & book instantly.
+            </motion.p>
 
-      <section id="services" className="services section-pad"><div className="section-head centered"><p className="eyebrow"><span/> made for every moment</p><h2>Whatever life<br/>throws your <em>way.</em></h2></div><div className="service-grid">{services.map(([name,Icon,sub],i)=><motion.div whileHover={{y:-8}} key={name} className={'service-card service-'+i}><span><Icon size={24}/></span><h3>{name}</h3><p>{sub}</p><ArrowRight size={17}/></motion.div>)}</div><button className="link-button">Explore 35+ service categories <ArrowRight size={17}/></button></section>
+            <motion.div variants={reveal} className="hero-actions-minimal">
+              <button className="button button-google-hero" onClick={triggerGoogleAuth}>
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#4285F4" d="M21.35 12.2c0-.7-.06-1.36-.18-2H12v3.79h5.24a4.48 4.48 0 0 1-1.94 2.94v2.46h3.14c1.84-1.7 2.91-4.2 2.91-7.19Z"/>
+                  <path fill="#34A853" d="M12 21.7c2.62 0 4.82-.87 6.44-2.31l-3.14-2.46c-.87.58-1.99.93-3.3.93-2.53 0-4.68-1.71-5.45-4.01H3.3v2.53A9.72 9.72 0 0 0 12 21.7Z"/>
+                  <path fill="#FBBC05" d="M6.55 13.85a5.84 5.84 0 0 1 0-3.7V7.62H3.3a9.7 9.7 0 0 0 0 8.76l3.25-2.53Z"/>
+                  <path fill="#EA4335" d="M12 6.14c1.43 0 2.72.49 3.73 1.45l2.8-2.8C16.82 3.19 14.62 2.3 12 2.3a9.72 9.72 0 0 0-8.7 5.32l3.25 2.53C7.32 7.85 9.47 6.14 12 6.14Z"/>
+                </svg>
+                Sign in with Google to Book <ArrowRight size={16} />
+              </button>
+            </motion.div>
 
-      <section className="vision section-pad"><article><p className="eyebrow"><span/> our north star</p><h2>India’s most<br/><em>trusted</em> local<br/>services platform.</h2><div className="line-arrow">↗</div></article><article><p className="eyebrow"><span/> why we exist</p><h2>To digitize local service — and put millions of independent professionals <em>on the map.</em></h2><div className="circle-word">SERVLY<br/>SERVLY</div></article></section>
+            <motion.div variants={reveal} className="rating">
+              <div className="avatar-stack">
+                <b>R</b><b>M</b><b>A</b><b>S</b>
+              </div>
+              <div>
+                <strong>
+                  <Star size={13} fill="currentColor" /> 4.9/5 rated by 50,000+ neighbors
+                </strong>
+              </div>
+            </motion.div>
+          </motion.div>
 
-      <section className="audience section-pad"><div className="section-head"><p className="eyebrow"><span/> for all of us</p><h2>A little more ease,<br/>for <em>every kind of day.</em></h2></div><div className="audience-grid">{audience.map(([t,d],i)=><article key={t}><span>0{i+1}</span><h3>{t}</h3><p>{d}</p><div className="aud-icon">{i===0?<Users/>:i===1?<GraduationCap/>:i===2?<Clock3/>:<Sparkles/>}</div></article>)}</div></section>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.9, ease: heroEase }}
+            className="hero-visual hero-visual-minimal"
+          >
+            <HeroScene />
+            
+            <motion.div 
+              animate={{ y: [0, -8, 0] }} 
+              transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+              className="float-tag tag-top"
+              onClick={triggerGoogleAuth}
+              style={{ cursor: 'pointer' }}
+            >
+              <MapPin size={15} className="text-orange" />
+              <div>
+                <b>14 Pros Nearby</b>
+                <small>Tap to sign in & book</small>
+              </div>
+            </motion.div>
 
-      <section id="ecosystem" className="ecosystem section-pad"><div className="section-head centered"><p className="eyebrow"><span/> one seamless network</p><h2>A better experience<br/>for <em>everyone involved.</em></h2></div><div className="ecosystem-grid">{[['01','Customer app','Find, book and track thoughtful service in a few taps.', 'Book in under 60 seconds'],['02','Provider app','Build a thriving business with powerful tools in your pocket.', 'Grow on your terms'],['03','Operations hub','The intelligence behind safer, smoother service at scale.', 'Built for clarity']].map(([n,t,d,cta],i)=><article key={t} className={'eco-card eco-'+i}><small>{n}</small><div className="device-ui"><span/><span/><span/></div><h3>{t}</h3><p>{d}</p><button>{cta} <ArrowRight size={15}/></button></article>)}</div></section>
+            <motion.div 
+              animate={{ y: [0, 8, 0] }} 
+              transition={{ repeat: Infinity, duration: 4.5, delay: 0.5, ease: 'easeInOut' }}
+              className="float-tag tag-bottom"
+              onClick={triggerGoogleAuth}
+              style={{ cursor: 'pointer' }}
+            >
+              <span className="verified"><BadgeCheck size={14} /></span>
+              <div>
+                <b>100% Verified</b>
+                <small>Sign in to view background checks</small>
+              </div>
+            </motion.div>
 
-      <section className="journey section-pad"><p className="eyebrow"><span/> designed to flow</p><h2>From “I need help”<br/>to “all sorted.”</h2><div className="journey-line"/><div className="journey-grid"><div><b>For customers</b>{['Open SERVLY','Choose a professional','Book instantly','Track in real time','Rate your experience'].map((x,i)=><p key={x}><span>{String(i+1).padStart(2,'0')}</span>{x}</p>)}</div><div><b>For professionals</b>{['Join the network','Complete KYC','Receive a booking','Do your best work','Get paid securely'].map((x,i)=><p key={x}><span>{String(i+1).padStart(2,'0')}</span>{x}</p>)}</div></div></section>
+            <div className="phone-shadow" />
+            <div className="phone" onClick={triggerGoogleAuth} style={{ cursor: 'pointer' }}>
+              <div className="phone-top">
+                <small>9:41</small>
+                <i />
+                <small>5G •••</small>
+              </div>
+              <div className="phone-screen">
+                <div className="app-head">
+                  <span>Welcome to SERVLY</span>
+                  <b><MapPin size={12} /> Bengaluru</b>
+                </div>
+                <h3>What do you need<br />done today?</h3>
+                <div className="search">⌕ &nbsp;Click to sign in & search...</div>
+                
+                <div className="mini-title">
+                  Trending near you <ChevronRight size={13} />
+                </div>
+                
+                <div className="mini-cards">
+                  <div>
+                    <span className="mini-icon orange">⚡</span>
+                    <b>Home<br />Cleaning</b>
+                    <small>From ₹399</small>
+                  </div>
+                  <div>
+                    <span className="mini-icon blue">🔧</span>
+                    <b>Electrical<br />Repair</b>
+                    <small>From ₹249</small>
+                  </div>
+                </div>
 
-      <section className="tech section-pad"><p>BUILT WITH THE BEST, FOR THE BEST</p><div>{['Flutter','Node.js','PostgreSQL','Firebase','Google Maps','AWS','Supabase','Razorpay'].map(x=><span key={x}>{x}</span>)}</div></section>
+                <div className="phone-banner-preview">
+                  <img 
+                    src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=400&q=80" 
+                    alt="Plumbing pro preview" 
+                  />
+                  <div>
+                    <b>Verified Experts</b>
+                    <small>Sign in with Google</small>
+                  </div>
+                </div>
 
-      <section className="team section-pad"><div className="section-head"><p className="eyebrow"><span/> builders at heart</p><h2>The people making<br/>local feel <em>limitless.</em></h2></div><div className="team-grid">{[['Ilma Khan','Co-founder'],['Divyanshi Rai','Co-founder'],['Vashudha Singh','Co-founder'],['Ritika Yadav','Co-founder']].map(([n,r],i)=><article key={n}><div className={'portrait portrait-'+i}><span>{n.split(' ').map(q=>q[0]).join('')}</span></div><p>{r}</p><h3>{n}</h3><Linkedin size={18}/></article>)}</div></section>
+                <div className="home-bar">
+                  <i />
+                  <span>Home</span>
+                  <span>Explore</span>
+                  <span>Sign In</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </section>
 
-      <section className="cta"><div className="cta-orb"/><p className="eyebrow"><span/> your neighbourhood, elevated</p><h2>Ready to make<br/>everyday <em>easier?</em></h2><p>One thoughtful app. A city of trusted professionals.</p><div><Button>Book a service</Button><Button dark>Join as a professional</Button></div></section>
-      <footer id="contact"><a className="logo" href="#top">serv<span>ly</span><i/></a><p>Every local service. One app.</p><div className="footer-links"><div><b>Explore</b><a>Services</a><a>For professionals</a><a>How it works</a></div><div><b>Company</b><a>Our story</a><a>Careers</a><a>Contact</a></div><div><b>Stay in the loop</b><div className="newsletter"><input placeholder="Your email address"/><button><ArrowRight size={17}/></button></div></div></div><div className="footer-bottom"><span>© 2026 SERVLY Technologies Pvt. Ltd.</span><span><Instagram size={16}/><Twitter size={16}/><Linkedin size={16}/></span><span>Privacy · Terms</span></div></footer>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify({'@context':'https://schema.org','@type':'Organization',name:'SERVLY',url:'https://servly.in',description:'India’s trusted hyperlocal services platform.'})}}/>
-    </main>
+        {/* Trust Badges Bar */}
+        <section className="trusted">
+          <p>THE GOLD STANDARD FOR HOME SERVICES</p>
+          <div className="trust-row">
+            {[
+              { title: 'KYC Verified Pros', icon: ShieldCheck, desc: 'Government ID verified' },
+              { title: 'Instant Booking', icon: Clock3, desc: 'Slot confirmation in seconds' },
+              { title: 'Transparent Upfront Rates', icon: CreditCard, desc: 'No hidden charges ever' },
+              { title: 'Smart AI Matching', icon: Bot, desc: 'Best local pros chosen for you' },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.title} className="trust-item" onClick={triggerGoogleAuth} style={{ cursor: 'pointer' }}>
+                  <span className="trust-icon"><Icon size={18} /></span>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <small>{item.desc}</small>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Visual Category Showcase (Unsplash Images) */}
+        <section id="services" className="services section-pad">
+          <div className="section-head centered">
+            <p className="eyebrow"><span /> curated for modern homes</p>
+            <h2>Explore Top Rated <em>Services.</em></h2>
+            <p>High quality home maintenance, beauty, and repair performed by verified professionals.</p>
+          </div>
+
+          <div className="service-unsplash-grid">
+            {discoveryCategories.map((cat, i) => (
+              <motion.div
+                key={cat.name}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.08 }}
+                whileHover={{ y: -8 }}
+                className="unsplash-card"
+                onClick={triggerGoogleAuth}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="unsplash-img-wrap">
+                  <img src={cat.image} alt={cat.name} loading="lazy" />
+                  <span className="card-price-badge">{cat.price}</span>
+                </div>
+                <div className="unsplash-card-content">
+                  <span className="category-subtitle">{cat.subtitle}</span>
+                  <h3>{cat.name}</h3>
+                  <div className="card-footer">
+                    <span className="rating-tag"><Star size={12} fill="currentColor" /> 4.9 (1.2k+ jobs)</span>
+                    <button className="mini-book-btn" onClick={(e) => { e.stopPropagation(); triggerGoogleAuth(); }}>
+                      Book now <ArrowRight size={13} />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="quick-service-pills">
+            {services.map(([name, Icon, sub]) => (
+              <motion.div 
+                whileHover={{ scale: 1.05 }} 
+                key={name} 
+                className="pill-item"
+                onClick={triggerGoogleAuth}
+              >
+                <Icon size={18} />
+                <span>{name}</span>
+                <small>{sub}</small>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* Interactive Stats Section */}
+        <section className="numbers">
+          <p className="eyebrow"><span /> built with care in India</p>
+          <h2>Local expertise,<br /><em>scaled with technology.</em></h2>
+          <div className="stat-grid">
+            {stats.map(([n, t]) => (
+              <motion.div whileHover={{ y: -6 }} key={t}>
+                <strong>{n}</strong>
+                <span>{t}</span>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* Why SERVLY / Problem Solution */}
+        <section id="story" className="problem section-pad">
+          <div className="section-head">
+            <p className="eyebrow"><span /> a better way forward</p>
+            <h2>Reinventing how home<br />services <em>should feel.</em></h2>
+            <p>No endless calls, no pricing friction, and no compromises on quality.</p>
+          </div>
+          <div className="problem-grid">
+            {[
+              ['Unreliable Discovery', 'Neighborhood referrals are hit or miss. We provide instant access to KYC-verified local professionals.'],
+              ['Opaque Pricing', 'Get fixed upfront rates before your pro arrives. No surprising haggling or hidden fees.'],
+              ['Quality Guarantee', 'Every service is backed by SERVLY satisfaction assurance and 4.9★ rating standard.'],
+              ['Provider Dignity', 'Independent mechanics, cleaners, and technicians receive tools, insurance, and steady earnings.'],
+            ].map((x, i) => (
+              <motion.article whileHover={{ y: -10, rotateX: 3 }} key={x[0]}>
+                <span>0{i + 1}</span>
+                <h3>{x[0]}</h3>
+                <p>{x[1]}</p>
+                <ArrowRight size={20} />
+              </motion.article>
+            ))}
+          </div>
+        </section>
+
+        {/* High Impact Visual Solution Showcase */}
+        <section className="solution section-pad">
+          <div className="solution-photo">
+            <Image
+              fill
+              sizes="(max-width: 800px) 100vw, 50vw"
+              src="https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=1200&q=85"
+              alt="Professional home cleaning service"
+            />
+            <div className="image-label">
+              <span><ShieldCheck size={20} /></span>
+              <div>
+                <b>Guaranteed Peace of Mind</b>
+                <small>KYC verified, insured & background checked experts.</small>
+              </div>
+            </div>
+          </div>
+          <div className="solution-copy">
+            <p className="eyebrow"><span /> the servly promise</p>
+            <h2>Designed for comfort.<br /><em>Driven by trust.</em></h2>
+            <p>
+              SERVLY unites India’s fragmented local service market under one sleek, transparent platform — empowering households while uplifting local professionals.
+            </p>
+            <div className="feature-list">
+              {['Hyperlocal pro discovery', 'Transparent fixed pricing', 'Professional partner dignity', 'Secure escrow protection', 'Live GPS status updates', '100% background checked'].map((x) => (
+                <div key={x}>
+                  <i><Check size={13} /></i>{x}
+                </div>
+              ))}
+            </div>
+            <div className="solution-auth-cta">
+              <GoogleAuth />
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works Journey */}
+        <section id="how-it-works" className="journey section-pad">
+          <p className="eyebrow"><span /> effortless process</p>
+          <h2>From booking to done<br />in <em>4 simple steps.</em></h2>
+          <div className="journey-line" />
+          <div className="journey-grid">
+            <div>
+              <b>For Customers</b>
+              {['Sign in with Google in 1 click', 'Pick your service category & date', 'Track your pro arriving in real time', 'Pay securely after work is complete'].map((x, i) => (
+                <p key={x}>
+                  <span>{String(i + 1).padStart(2, '0')}</span>{x}
+                </p>
+              ))}
+            </div>
+            <div>
+              <b>For Service Professionals</b>
+              {['Complete digital KYC onboarding', 'Set your skills & work coverage', 'Receive instant job requests', 'Get paid directly with zero delays'].map((x, i) => (
+                <p key={x}>
+                  <span>{String(i + 1).padStart(2, '0')}</span>{x}
+                </p>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section with Google Auth */}
+        <section className="cta">
+          <div className="cta-orb" />
+          <p className="eyebrow"><span /> get started in seconds</p>
+          <h2>Experience calmer,<br /><em>smarter local help today.</em></h2>
+          <p>Join thousands of happy homeowners and verified professionals across your city.</p>
+          <div className="cta-action-box">
+            <GoogleAuth />
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer id="contact">
+          <a className="logo" href="#top">
+            serv<span>ly</span><i />
+          </a>
+          <p>Every local service. One app.</p>
+          <div className="footer-links">
+            <div>
+              <b>Explore</b>
+              <a href="#services">Services</a>
+              <a href="#how-it-works">How it works</a>
+              <a href="#ecosystem">For professionals</a>
+            </div>
+            <div>
+              <b>Company</b>
+              <a href="#story">Our story</a>
+              <a href="#contact">Contact</a>
+            </div>
+            <div>
+              <b>Stay in the loop</b>
+              <div className="newsletter">
+                <input placeholder="Your email address" />
+                <button aria-label="Subscribe"><ArrowRight size={17} /></button>
+              </div>
+            </div>
+          </div>
+          <div className="footer-bottom">
+            <span>© 2026 SERVLY Technologies Pvt. Ltd.</span>
+            <span>
+              <Instagram size={16} />
+              <Twitter size={16} />
+              <Linkedin size={16} />
+            </span>
+            <span>Privacy Policy • Terms of Service</span>
+          </div>
+        </footer>
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'SERVLY',
+              url: 'https://servly.in',
+              description: 'India’s trusted hyperlocal services platform.',
+            }),
+          }}
+        />
+      </main>
+    );
   }
 
   return (
@@ -374,33 +746,29 @@ export default function Home() {
             <span className="home-pill"><Flame size={13} /> Trending today</span>
             <h1>What service do you need at home?</h1>
             <p>Book verified professionals for cleaning, painting, plumbing and more with a polished, food-app-fast discovery flow.</p>
-            <div className="home-hero-badges">
-              <span><ShieldCheck size={14} /> KYC verified</span>
-              <span><Clock3 size={14} /> 30 min slots</span>
-              <span><Star size={14} fill="currentColor" /> 4.9 average</span>
-            </div>
           </div>
         </motion.div>
 
-        <motion.label initial={{ opacity: 0, scale: .98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: .55, delay: .15 }} className="home-search-input">
-          <Search size={18} />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search for painting, cleaning, plumbing..." />
-          <button type="button" aria-label="Filters"><SlidersHorizontal size={17} /></button>
+        <motion.label initial={{ opacity: 0, scale: .98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: .55, delay: .15 }} className="home-search-input advanced-search-bar">
+          <Search size={20} className="search-icon-accent" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search services, professionals or locations (e.g. Plumbing, Cleaning, Electrician)..." />
+          {search && <button type="button" onClick={() => setSearch('')} className="search-clear-btn"><X size={15} /></button>}
+          <button type="button" aria-label="Filters" className="search-filter-btn"><SlidersHorizontal size={17} /></button>
         </motion.label>
 
         <div className="home-section-head compact">
           <div>
             <h2>Categories</h2>
-            <p>Tap a service and SERVLY will tune the recommendations below.</p>
+            <p>Select a service to filter top verified experts nearby.</p>
           </div>
-          <button className="see-all">See all <ChevronRight size={14} /></button>
+          <button className="see-all" onClick={() => setActiveCategory('All')}>Reset filter <ChevronRight size={14} /></button>
         </div>
 
-        <div className="service-chip-row category-rail">
+        <div className="service-chip-row category-rail category-rail-advanced">
           <motion.button whileTap={{ scale: .95 }} className={`service-tile ${activeCategory === 'All' ? 'active' : ''}`} onClick={() => setActiveCategory('All')}>
             <span><Sparkles size={21} /></span>
-            <b>All</b>
-            <small>Explore</small>
+            <b>All Services</b>
+            <small>Explore all</small>
           </motion.button>
           {serviceCategories.map((item, index) => {
             const Icon = categoryIcons[item] || Sparkles;
@@ -408,58 +776,48 @@ export default function Home() {
               <motion.button initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .45, delay: index * .035 }} whileHover={{ y: -6 }} whileTap={{ scale: .95 }} key={item} className={`service-tile ${activeCategory === item ? 'active' : ''}`} onClick={() => setActiveCategory(item)}>
                 <span><Icon size={21} /></span>
                 <b>{item}</b>
-                <small>Near you</small>
+                <small>Available</small>
               </motion.button>
             );
           })}
         </div>
 
-        <div className="offer-strip">
-          <div>
-            <span>SMART SAVINGS</span>
-            <b>Book today and unlock verified pros, review photos, and priority slots.</b>
-          </div>
-          <CalendarDays size={22} />
-        </div>
-
-        <div className="home-section-head">
-          <div>
-            <h2>Popular categories</h2>
-            <p>Large visual picks inspired by food delivery apps, redesigned for premium services.</p>
-          </div>
-          <span>{discoveryCategories.length} curated picks</span>
-        </div>
-
-        <div className="category-grid">
-          {discoveryCategories.map((item, index) => (
-            <motion.button initial={{ opacity: 0, y: 22 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: .55, delay: index * .05 }} whileHover={{ y: -8, scale: 1.01 }} key={item.name} className={`category-card ${activeCategory === item.name ? 'active' : ''}`} onClick={() => setActiveCategory(item.name)}>
-              <img src={item.image} alt={item.name} />
-              <div className="category-card-content">
-                <span>{item.subtitle}</span>
-                <h3>{item.name}</h3>
-                <b>{item.price}</b>
-              </div>
-            </motion.button>
-          ))}
-        </div>
-
         <div className="home-section-head">
           <div>
             <h2>Recommended for you</h2>
-            <p>Service pro profiles with photos, ratings, speciality, pricing and nearby availability.</p>
+            <p>Click any professional card to view full service details, portfolio photos, ratings and instant booking.</p>
           </div>
-          <span>{filteredProviders.length} results</span>
+          <span className="results-badge">{filteredProviders.length} verified pros available</span>
         </div>
 
         {loadingProviders ? (
           <div className="home-loading-card small">
             <LoaderCircle className="spin" size={20} />
-            <p>Loading providers near you…</p>
+            <p>Loading top verified service providers...</p>
           </div>
         ) : (
-          <div className="provider-grid">
+          <div className="provider-grid provider-grid-advanced">
             {filteredProviders.map((provider, index) => (
-              <motion.article initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: .5, delay: index * .06 }} whileHover={{ y: -7 }} key={provider.userEmail} className="provider-card">
+              <motion.article 
+                initial={{ opacity: 0, y: 24 }} 
+                whileInView={{ opacity: 1, y: 0 }} 
+                viewport={{ once: true, margin: '-50px' }} 
+                transition={{ duration: .45, delay: index * 0.05 }} 
+                whileHover={{ y: -8, scale: 1.01 }} 
+                key={provider.userEmail} 
+                className="provider-card provider-card-clickable"
+                onClick={() => {
+                  setSelectedProvider(provider);
+                  setSlideIndex(0);
+                  setAppointmentDate('');
+                  setAppointmentSlot('10:00 AM');
+                  setBookingConfirmed(false);
+                  setShowConfirmPopup(false);
+                  setReviewText('');
+                  setReviewImage('');
+                  setServicePhotoMessage('');
+                }}
+              >
                 <div className="provider-image-wrap">
                   <span className="provider-category-badge">{provider.category}</span>
                   {providerPhotos[provider.userEmail]?.[0] || provider.photoURL ? (
@@ -468,11 +826,12 @@ export default function Home() {
                     <div className="provider-image-fallback"><span>{provider.displayName.charAt(0)}</span></div>
                   )}
                   {(providerPhotos[provider.userEmail] || []).slice(1, 3).map((photo, photoIndex) => (
-                    <img key={`${photo.slice(-18)}-${photoIndex}`} className="provider-work-thumb" src={photo} alt={`${provider.displayName} service work ${photoIndex + 2}`} />
+                    <img key={`${photo.slice(-18)}-${photoIndex}`} className="provider-work-thumb" src={photo} alt={`${provider.displayName} work ${photoIndex + 2}`} />
                   ))}
-                  {(providerPhotos[provider.userEmail] || []).length > 3 && <span className="provider-photo-count"><Images size={12} /> +{providerPhotos[provider.userEmail].length - 3} more</span>}
+                  {(providerPhotos[provider.userEmail] || []).length > 3 && <span className="provider-photo-count"><Images size={12} /> +{providerPhotos[provider.userEmail].length - 3}</span>}
                   <span className="pro-badge"><BadgeCheck size={13} /> Verified pro</span>
                 </div>
+
                 <div className="provider-card-body">
                   <div className="provider-card-top">
                     <div>
@@ -481,37 +840,49 @@ export default function Home() {
                     </div>
                     <span className="rating-pill"><Star size={12} fill="currentColor" /> {provider.rating.toFixed(1)}</span>
                   </div>
+
                   <div className="provider-meta">
                     <span><MapPin size={12} /> {provider.city}</span>
                     <span><Clock3 size={12} /> ₹{provider.hourlyRate}/hr</span>
                   </div>
+
                   <p className="provider-bio">{provider.bio}</p>
+
                   <div className="provider-tags">
                     {provider.servicesOffered.slice(0, 3).map((service) => <span key={service}>{service}</span>)}
                   </div>
-                  <button
-                    className="book-btn"
-                    onClick={() => {
-                      setSelectedProvider(provider);
-                      setAppointmentDate('');
-                      setAppointmentSlot('10:00 AM');
-                      setBookingConfirmed(false);
-                      setShowConfirmPopup(false);
-                      setReviewText('');
-                      setReviewImage('');
-                      setServicePhotoMessage('');
-                    }}
-                  >
-                    <CalendarDays size={15} /> Book appointment
-                  </button>
+
+                  <div className="card-action-row">
+                    <button
+                      className="book-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProvider(provider);
+                        setSlideIndex(0);
+                        setAppointmentDate('');
+                        setAppointmentSlot('10:00 AM');
+                        setBookingConfirmed(false);
+                        setShowConfirmPopup(false);
+                        setReviewText('');
+                        setReviewImage('');
+                        setServicePhotoMessage('');
+                      }}
+                    >
+                      <CalendarDays size={15} /> Book appointment
+                    </button>
+                    <span className="view-details-hint">Full details <ChevronRight size={14} /></span>
+                  </div>
                 </div>
               </motion.article>
             ))}
             {!filteredProviders.length && (
               <div className="empty-results">
-                <Sparkles size={24} />
-                <h3>No matching providers yet</h3>
-                <p>Try another category or search term to discover more SERVLY professionals.</p>
+                <Sparkles size={28} className="icon-orange" />
+                <h3>No matching service pros found</h3>
+                <p>Try searching for a different service or clearing the category filter.</p>
+                <button className="button button-outline mt-15" onClick={() => { setSearch(''); setActiveCategory('All'); }}>
+                  Reset all filters
+                </button>
               </div>
             )}
           </div>
@@ -521,15 +892,40 @@ export default function Home() {
         <div className="booking-modal-backdrop" role="dialog" aria-modal="true" aria-label={`Book ${selectedProvider.displayName}`}>
           <motion.div initial={{ opacity: 0, y: 28, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="booking-modal-card">
             <button className="booking-close" onClick={() => setSelectedProvider(null)} aria-label="Close booking details"><X size={18} /></button>
-            <div className="booking-gallery">
-              {([...(providerPhotos[selectedProvider.userEmail] || []), ...(selectedProvider.photoURL ? [selectedProvider.photoURL] : [])].slice(0, 4)).length ? (
-                ([...(providerPhotos[selectedProvider.userEmail] || []), ...(selectedProvider.photoURL ? [selectedProvider.photoURL] : [])].slice(0, 4)).map((photo, index) => (
-                  <img key={photo + index} src={photo} alt={`${selectedProvider.displayName} work ${index + 1}`} />
-                ))
-              ) : (
-                <div className="booking-gallery-empty">No gallery photos available for this provider.</div>
-              )}
-            </div>
+            {(() => {
+              const allPhotos = [...(providerPhotos[selectedProvider.userEmail] || []), ...(selectedProvider.photoURL ? [selectedProvider.photoURL] : [])];
+              if (!allPhotos.length) {
+                return (
+                  <div className="slideshow slideshow--empty">
+                    <div className="slideshow-empty"><ImagePlus size={32} /><span>No photos yet</span></div>
+                  </div>
+                );
+              }
+              const safeIndex = slideIndex % allPhotos.length;
+              return (
+                <div className="slideshow">
+                  <div className="slideshow-track" style={{ transform: `translateX(-${safeIndex * 100}%)` }}>
+                    {allPhotos.map((photo, i) => (
+                      <div key={`slide-${i}`} className="slideshow-slide">
+                        <img src={photo} alt={`${selectedProvider.displayName} photo ${i + 1}`} />
+                      </div>
+                    ))}
+                  </div>
+                  {allPhotos.length > 1 && (
+                    <>
+                      <button className="slide-arrow slide-arrow--left" onClick={(e) => { e.stopPropagation(); setSlideIndex((safeIndex - 1 + allPhotos.length) % allPhotos.length); }}><ChevronLeft size={20} /></button>
+                      <button className="slide-arrow slide-arrow--right" onClick={(e) => { e.stopPropagation(); setSlideIndex((safeIndex + 1) % allPhotos.length); }}><ChevronRight size={20} /></button>
+                      <div className="slide-dots">
+                        {allPhotos.map((_, i) => (
+                          <button key={`dot-${i}`} className={`slide-dot${i === safeIndex ? ' active' : ''}`} onClick={(e) => { e.stopPropagation(); setSlideIndex(i); }} />
+                        ))}
+                      </div>
+                      <span className="slide-counter">{safeIndex + 1} / {allPhotos.length}</span>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
             <div className="booking-modal-body">
               <div className="booking-provider-head">
                 <div>
