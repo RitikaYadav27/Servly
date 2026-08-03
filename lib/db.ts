@@ -2,59 +2,46 @@ import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-interface MongooseCache {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
+if (!MONGODB_URI) {
+  throw new Error('Missing MONGODB_URI environment variable');
 }
 
 declare global {
-  var mongooseCache: MongooseCache | undefined;
+  var _mongooseConn: typeof mongoose | null;
+  var _mongoosePromise: Promise<typeof mongoose> | null;
 }
 
-let cached: MongooseCache = global.mongooseCache || { conn: null, promise: null };
-
-if (!global.mongooseCache) {
-  global.mongooseCache = cached;
-}
+global._mongooseConn = global._mongooseConn ?? null;
+global._mongoosePromise = global._mongoosePromise ?? null;
 
 export async function connectToDatabase() {
-  if (!MONGODB_URI) {
-    throw new Error('Missing MONGODB_URI environment variable');
+  if (global._mongooseConn && mongoose.connection.readyState === 1) {
+    return global._mongooseConn;
   }
 
-  if (cached.conn) {
-    return cached.conn;
+  if (mongoose.connection.readyState === 0 || mongoose.connection.readyState === 3) {
+    global._mongooseConn = null;
+    global._mongoosePromise = null;
   }
 
-  if (!cached.promise) {
-    let uri = MONGODB_URI;
-    if (uri.includes('.mongodb.net/') && uri.includes('.mongodb.net/?')) {
-      uri = uri.replace('.mongodb.net/?', '.mongodb.net/servly?');
-    } else if (uri.includes('.mongodb.net/') && !uri.includes('.mongodb.net/servly')) {
-      // Already has a db name, leave it
-    } else if (uri.endsWith('.mongodb.net/')) {
-      uri = uri + 'servly';
-    }
-
-    const opts = {
-      bufferCommands: false,
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      family: 4,
-    };
-
-    cached.promise = mongoose.connect(uri, opts).then((m) => {
-      console.log('MongoDB connected successfully');
-      return m;
-    });
+  if (!global._mongoosePromise) {
+    global._mongoosePromise = mongoose
+      .connect(MONGODB_URI as string, {
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 10000,
+      })
+      .then((m) => {
+        console.log('MongoDB connected');
+        return m;
+      })
+      .catch((err) => {
+        global._mongoosePromise = null;
+        global._mongooseConn = null;
+        throw err;
+      });
   }
 
-  try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
-
-  return cached.conn;
+  global._mongooseConn = await global._mongoosePromise;
+  return global._mongooseConn;
 }
