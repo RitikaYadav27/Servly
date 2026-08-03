@@ -7,7 +7,7 @@ import Script from 'next/script';
 import { 
   ArrowLeft, Briefcase, CheckCircle2, ShieldCheck, 
   MapPin, Clock, Award, User as UserIcon, Mail, Wrench, Sparkles, 
-  DollarSign, AlertCircle, PlusCircle, Check, LoaderCircle, LogOut 
+  DollarSign, AlertCircle, PlusCircle, Check, LoaderCircle, LogOut, ImagePlus, Trash2, Images 
 } from 'lucide-react';
 
 type FirebaseUser = {
@@ -41,6 +41,9 @@ type DbProvider = {
   servicesOffered: string[];
   status: 'active' | 'pending' | 'paused';
 };
+type StoredBooking = { id: string; bookingId?: string; providerEmail: string; providerName: string; providerCategory: string; providerPhoto?: string; customerEmail: string; customerName: string; date: string; time: string; status: string; createdAt: string };
+type StoredReview = { id: string; providerEmail: string; authorName: string; rating: number; text: string; image?: string; createdAt: string };
+type ProviderPhotoMap = Record<string, string[]>;
 
 const SERVICE_CATEGORIES = [
   'Plumbing', 'Electrician', 'Home Cleaning', 'Painting', 
@@ -56,6 +59,10 @@ export default function ProfilePage() {
   // Real DB States
   const [dbUser, setDbUser] = useState<DbUser | null>(null);
   const [dbProvider, setDbProvider] = useState<DbProvider | null>(null);
+  const [localBookings, setLocalBookings] = useState<StoredBooking[]>([]);
+  const [localReviews, setLocalReviews] = useState<StoredReview[]>([]);
+  const [providerPhotos, setProviderPhotos] = useState<ProviderPhotoMap>({});
+  const [portfolioMessage, setPortfolioMessage] = useState('');
 
   // Form States
   const [showProviderModal, setShowProviderModal] = useState(false);
@@ -106,6 +113,27 @@ export default function ProfilePage() {
     return () => unsubscribe?.();
   }, []);
 
+  const normalizeBookings = (bookings: StoredBooking[]) => bookings.map((booking) => ({
+    ...booking,
+    id: booking.id || booking.bookingId || `${booking.providerEmail}-${booking.date}-${booking.time}`,
+  }));
+
+  const loadActivity = async (email: string) => {
+    try {
+      const response = await fetch(`/api/activity?type=all&email=${encodeURIComponent(email)}`);
+      const data = await response.json();
+      if (response.ok) {
+        setLocalBookings(normalizeBookings(data.bookings || []));
+        setLocalReviews(data.reviews || []);
+        setProviderPhotos(data.providerPhotos || {});
+      } else {
+        console.warn('Activity API returned a non-ok status, keeping existing activity state', response.status, data);
+      }
+    } catch (error) {
+      console.error('Failed loading MongoDB activity', error);
+    }
+  };
+
   const fetchMongoData = async (email: string, displayName: string, photoURL: string | null) => {
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -135,11 +163,67 @@ export default function ProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: normalizedEmail, displayName, photoURL })
       });
+
+      await loadActivity(normalizedEmail);
     } catch (err) {
       console.error('Failed fetching MongoDB profile:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const saveProviderPhotos = async (nextPhotos: ProviderPhotoMap) => {
+    setProviderPhotos(nextPhotos);
+    const providerEmail = dbProvider?.userEmail || dbUser?.email;
+    if (!providerEmail) return;
+    const photos = nextPhotos[providerEmail] || [];
+    const response = await fetch('/api/activity', {
+      method: photos.length ? 'POST' : 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(photos.length ? { type: 'portfolio', providerEmail, photos } : { providerEmail, photos }),
+    });
+    const data = await response.json().catch(() => ({ error: 'Invalid JSON response' }));
+    console.log('saveProviderPhotos response', response.status, data);
+    if (!response.ok) {
+      const message = data?.error || 'Unable to save portfolio to MongoDB';
+      throw new Error(message);
+    }
+  };
+
+  const compressImage = (file: File) => new Promise<string>((resolve, reject) => {
+    const image = new window.Image();
+    const reader = new FileReader();
+    reader.onload = () => { image.src = String(reader.result); };
+    reader.onerror = reject;
+    image.onload = () => {
+      const maxSize = 1280;
+      const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.72));
+    };
+    image.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const uploadPortfolioPhotos = async (files: FileList | null) => {
+    const providerEmail = dbProvider?.userEmail || dbUser?.email;
+    if (!providerEmail || !files?.length) return;
+    const selectedFiles = Array.from(files).slice(0, 8);
+    const uploaded = await Promise.all(selectedFiles.map(compressImage));
+    const existing = providerPhotos[providerEmail] || [];
+    await saveProviderPhotos({ ...providerPhotos, [providerEmail]: [...uploaded, ...existing].slice(0, 12) });
+    setPortfolioMessage(`${uploaded.length} ${uploaded.length === 1 ? 'photo' : 'photos'} added to your SERVLY portfolio.`);
+  };
+
+  const removePortfolioPhoto = (index: number) => {
+    const providerEmail = dbProvider?.userEmail || dbUser?.email;
+    if (!providerEmail) return;
+    const next = (providerPhotos[providerEmail] || []).filter((_, photoIndex) => photoIndex !== index);
+    void saveProviderPhotos({ ...providerPhotos, [providerEmail]: next });
+    setPortfolioMessage('Portfolio photo removed.');
   };
 
   const handleBecomeProviderSubmit = async (e: React.FormEvent) => {
@@ -239,6 +323,10 @@ export default function ProfilePage() {
   const email = firebaseUser?.email || dbUser?.email || 'guest@servly.in';
   const photo = firebaseUser?.photoURL || dbUser?.photoURL;
   const isProviderActive = dbUser?.isProvider && dbProvider?.status === 'active';
+  const customerBookings = localBookings.filter((booking) => booking.customerEmail === email);
+  const providerBookings = dbProvider ? localBookings.filter((booking) => booking.providerEmail === dbProvider.userEmail) : [];
+  const providerReviews = dbProvider ? localReviews.filter((review) => review.providerEmail === dbProvider.userEmail) : [];
+  const portfolioPhotos = dbProvider ? (providerPhotos[dbProvider.userEmail] || []) : [];
 
   return (
     <main className="profile-wrapper">
@@ -343,6 +431,11 @@ export default function ProfilePage() {
               {isProviderActive && (
                 <span className="verified-check" title="Verified Provider">
                   <Check size={14} />
+                </span>
+              )}
+              {customerBookings.length > 0 && (
+                <span className="appointment-count-badge" title="Booked appointments">
+                  {customerBookings.length}
                 </span>
               )}
             </div>
@@ -477,16 +570,104 @@ export default function ProfilePage() {
                   </button>
                 </div>
               </div>
+
+              <div className="portfolio-manager mt-20">
+                <div className="portfolio-manager-head">
+                  <div>
+                    <span className="section-kicker"><Images size={14} /> Your portfolio</span>
+                    <h3>Show customers your best work</h3>
+                    <p>Upload up to 12 service photos. They appear on your home card and full profile.</p>
+                  </div>
+                  <label className="portfolio-upload-button">
+                    <ImagePlus size={16} /> Add photos
+                    <input type="file" accept="image/*" multiple onChange={(event) => uploadPortfolioPhotos(event.target.files)} />
+                  </label>
+                </div>
+                {portfolioMessage && <p className="portfolio-message"><Check size={14} /> {portfolioMessage}</p>}
+                {portfolioPhotos.length ? (
+                  <div className="portfolio-grid">
+                    {portfolioPhotos.map((portfolioPhoto, index) => (
+                      <div className={`portfolio-photo ${index === 0 ? 'featured' : ''}`} key={`${portfolioPhoto.slice(-20)}-${index}`}>
+                        <img src={portfolioPhoto} alt={`Service work ${index + 1}`} />
+                        {index === 0 && <span className="portfolio-featured-tag">Featured on card</span>}
+                        <button type="button" className="portfolio-delete" onClick={() => removePortfolioPhoto(index)} aria-label={`Remove service photo ${index + 1}`} title="Remove photo">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <label className="portfolio-empty">
+                    <ImagePlus size={24} />
+                    <strong>Build your visual portfolio</strong>
+                    <span>Customers see real examples before they book.</span>
+                    <input type="file" accept="image/*" multiple onChange={(event) => uploadPortfolioPhotos(event.target.files)} />
+                  </label>
+                )}
+              </div>
+
+              <div className="info-card mt-20">
+                <h3>Incoming Appointment Requests</h3>
+                {providerBookings.length ? (
+                  <div className="profile-booking-list">
+                    {providerBookings.map((booking) => (
+                      <article key={booking.id} className="profile-booking-card">
+                        <div>
+                          <strong>{booking.customerName}</strong>
+                          <p>{booking.providerCategory} appointment on {booking.date} at {booking.time}</p>
+                        </div>
+                        <span>{booking.status}</span>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p>No incoming appointment requests yet.</p>
+                )}
+              </div>
+
+              <div className="info-card mt-20">
+                <h3>Reviews With Photos</h3>
+                {providerReviews.length ? (
+                  <div className="profile-review-grid">
+                    {providerReviews.map((review) => (
+                      <article key={review.id} className="profile-review-card">
+                        {review.image && <img src={review.image} alt={`${review.authorName} review`} />}
+                        <strong>{review.authorName} - {review.rating.toFixed(1)} stars</strong>
+                        <p>{review.text}</p>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p>No customer photo reviews yet.</p>
+                )}
+              </div>
             </div>
           )}
 
           {activeTab === 'bookings' && (
             <div className="info-card">
               <h3>Your Bookings</h3>
-              <p className="muted-text">No active service bookings found in MongoDB. Explore local services on the home page!</p>
-              <Link href="/" className="button button-dark mt-15" style={{ display: 'inline-flex' }}>
-                Explore Services
-              </Link>
+              {customerBookings.length ? (
+                <div className="profile-booking-list">
+                  {customerBookings.map((booking) => (
+                    <article key={booking.id} className="profile-booking-card with-photo">
+                      {booking.providerPhoto && <img src={booking.providerPhoto} alt={booking.providerName} />}
+                      <div>
+                        <strong>{booking.providerName}</strong>
+                        <p>{booking.providerCategory} appointment on {booking.date} at {booking.time}</p>
+                      </div>
+                      <span>{booking.status}</span>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <p className="muted-text">No active service bookings found yet. Explore local services on the home page!</p>
+                  <Link href="/" className="button button-dark mt-15" style={{ display: 'inline-flex' }}>
+                    Explore Services
+                  </Link>
+                </>
+              )}
             </div>
           )}
 

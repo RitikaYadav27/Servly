@@ -8,4 +8,4 @@ export const metadata: Metadata = {
   openGraph: { title: 'SERVLY', description: 'Every Local Service. One App.', type: 'website' },
   twitter: { card: 'summary_large_image', title: 'SERVLY', description: 'Every Local Service. One App.' },
 };
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body>{children}</body></html> }
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" /></head><body>{children}</body></html> }
